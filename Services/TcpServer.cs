@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
+using TcpServerApp.Handlers;
 using TcpServerApp.Interface;
 using TcpServerApp.Interface;
 
@@ -37,7 +38,14 @@ namespace TcpServerApp.Services
 
             // Start the TcpListener, allowing it to begin listening for client requests.
             _tcpListener.Start();
-            Console.WriteLine($"Server started at IP Address: {ipAddress}\nPort: {port}");  // Inform the console that the server has started and is listening on the given IP and port.
+            // Colorized output
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine($"Server started at:");
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"IP Address: {ipAddress}");
+            Console.ForegroundColor = ConsoleColor.Yellow;
+            Console.WriteLine($"Port: {port}");
+            Console.ResetColor();  // Inform the console that the server has started and is listening on the given IP and port.
 
             // Begin listening for client connections asynchronously in a separate method.
             ListenForClientsAsync();
@@ -72,31 +80,84 @@ namespace TcpServerApp.Services
             byte[] buffer = new byte[1024];
             int bytesRead;
 
-            // Continuously read data from the client while it's sending.
             while ((bytesRead = await stream.ReadAsync(buffer, 0, buffer.Length)) != 0)
             {
-                // Create a new byte array that contains the exact amount of data read from the client.
                 byte[] receivedBytes = new byte[bytesRead];
                 Buffer.BlockCopy(buffer, 0, receivedBytes, 0, bytesRead);
 
-                // Convert the received bytes to a hexadecimal string for identifying the command.
-                string commandHex = BitConverter.ToString(receivedBytes).Replace("-", string.Empty);
+                // Define the delimiter used in the client
+                byte[] delimiter = { 0x1D, 0x42, 0x1E }; // Example delimiter
+                int delimiterLength = delimiter.Length;
 
-                // Process the command instead of a general message.
-                Console.WriteLine($"Valid Command Received in Hexa: {commandHex}");
-                Console.WriteLine($"Valida Command Recieved in string: {HexToString(commandHex)}");
+                // Find the delimiter in the received data
+                int delimiterIndex = IndexOf(receivedBytes, delimiter);
 
-                // Process the command accordingly
+                if (delimiterIndex >= 0)
+                {
+                    // Extract command and message based on delimiter
+                    byte[] commandBytes = new byte[delimiterIndex];
+                    byte[] messageBytes = new byte[receivedBytes.Length - delimiterIndex - delimiterLength];
 
-                // Send the response back to the client
-                byte[] responseBytes = Encoding.UTF8.GetBytes(_commandProcessor.ProcessCommand(receivedBytes).ResponseMessage);
-                await stream.WriteAsync(responseBytes, 0, responseBytes.Length);
+                    Buffer.BlockCopy(receivedBytes, 0, commandBytes, 0, delimiterIndex);
+                    Buffer.BlockCopy(receivedBytes, delimiterIndex + delimiterLength, messageBytes, 0, messageBytes.Length);
+
+                    // Convert the command bytes to a hexadecimal string
+                    string commandHex = BitConverter.ToString(commandBytes).Replace("-", string.Empty);
+
+                    // Map the command hex to its key
+                    string commandKey = GetCommandKeyFromHex(commandHex);
+                    // Color output
+                    Console.ForegroundColor = ConsoleColor.Cyan;
+                    Console.WriteLine($"Valid Command Received in Hex: {commandHex}");
+                    Console.ForegroundColor = ConsoleColor.Magenta;
+                    Console.WriteLine($"Valid Command Received in String: {commandKey}");
+                    Console.ForegroundColor = ConsoleColor.Green;
+                    Console.WriteLine($"Message Received: {Encoding.ASCII.GetString(messageBytes)}");
+                    Console.ResetColor();
+
+                    // Process the command and message accordingly
+
+                    // Send the response back to the client
+                    byte[] responseBytes = Encoding.UTF8.GetBytes(_commandProcessor.ProcessCommand(commandBytes).ResponseMessage);
+                    await stream.WriteAsync(responseBytes, 0, responseBytes.Length);
+                }
+                else
+                {
+                    Console.ForegroundColor = ConsoleColor.Red;
+                    Console.WriteLine("Delimiter not found in received data.");
+                    Console.ResetColor();
+                }
             }
 
-            // Close the client connection when done.
             client.Close();
+            Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine("Client disconnected.");
+            Console.ResetColor();
         }
+
+        // Method to find the index of a byte pattern within a byte array
+        private int IndexOf(byte[] source, byte[] pattern)
+        {
+            for (int i = 0; i <= source.Length - pattern.Length; i++)
+            {
+                if (source.Skip(i).Take(pattern.Length).SequenceEqual(pattern))
+                {
+                    return i;
+                }
+            }
+            return -1;
+        }
+
+        // Method to get command key from hexadecimal value
+        private string GetCommandKeyFromHex(string hexValue)
+        {
+            var commandDictionary = PrinterCommand.Commands;
+            var commandEntry = commandDictionary.FirstOrDefault(x => x.Value.Equals(hexValue, StringComparison.OrdinalIgnoreCase));
+            return commandEntry.Key ?? "Unknown Command";
+        }
+
+
+
 
         private string HexToString(string hex)
         {
