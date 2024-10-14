@@ -1,23 +1,22 @@
 ﻿using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using TcpServerApp.Interface;
-using TcpServerApp.Services;
 
 namespace TcpServerApp
 {
     public class Program
     {
         private const int Port = 5000; // Specify the port you want to listen on.
+        private const string IpAddress = "127.0.0.1"; // Specify the IP address to listen on.
 
         static async Task Main(string[] args)
         {
-            // Create a TCP listener
-            TcpListener listener = new TcpListener(IPAddress.Any, Port);
+            // Create a TCP listener using the specified IP address and port
+            TcpListener listener = new TcpListener(IPAddress.Parse(IpAddress), Port);
 
             // Start listening for incoming connections
             listener.Start();
-            Console.WriteLine($"Server is listening on port {Port}...");
+            Console.WriteLine($"Server is listening on {IpAddress}:{Port}...");
 
             while (true)
             {
