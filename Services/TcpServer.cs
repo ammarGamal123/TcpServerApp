@@ -33,23 +33,25 @@ namespace TcpServerApp.Services
         /// <param name="port">The port to listen for incoming connections.</param>
         public void Start(string ipAddress, int port)
         {
-            // Initialize the TcpListener with the specified IP address and port, which will listen for incoming client connections.
-            _tcpListener = new TcpListener(IPAddress.Parse(ipAddress), port);
+            // Use IPAddress.Any to bind to all available network interfaces
+            _tcpListener = new TcpListener(IPAddress.Any, port);
 
             // Start the TcpListener, allowing it to begin listening for client requests.
             _tcpListener.Start();
-            // Colorized output
+
+            // Inform the console that the server has started and is listening on the given IP and port.
             Console.ForegroundColor = ConsoleColor.Cyan;
             Console.WriteLine($"Server started at:");
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"IP Address: {ipAddress}");
+            Console.WriteLine($"IP Address: {IPAddress.Any}");
             Console.ForegroundColor = ConsoleColor.Yellow;
             Console.WriteLine($"Port: {port}");
-            Console.ResetColor();  // Inform the console that the server has started and is listening on the given IP and port.
+            Console.ResetColor();
 
             // Begin listening for client connections asynchronously in a separate method.
             ListenForClientsAsync();
         }
+
 
         /// <summary>
         /// Asynchronously listens for client connections.
